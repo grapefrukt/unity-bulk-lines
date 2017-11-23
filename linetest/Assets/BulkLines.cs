@@ -3,69 +3,51 @@ using Utilities;
 
 public class BulkLines : MonoBehaviour {
 
-	const int maxLineCount = 123;
-	const float vertexDensity = .05f;
+	// THIS NUMBER NEEDS TO MATCH WHATEVER'S IN THE SHADER
+	// IF YOU CHANGE THIS, YOU MAY NEED TO RESTART UNITY FOR
+	// IT TO TAKE HOLD (YES, IT'S BIZARRE)
+	public const int MaxLineCount = 123;
+	
+	const float VertexDensity = .05f;
 
 	public Material material;
 	Vector4[] segments;
-	Vector4[] velocities;
 	Vector4[] colors;
 
+	bool dirty = true;
+
 	void Awake () {
-		segments = new Vector4[maxLineCount];
-		colors = new Vector4[maxLineCount];
+		segments = new Vector4[MaxLineCount];
+		colors = new Vector4[MaxLineCount];
 
-		velocities = new Vector4[maxLineCount];
-
-		for (var i = 0; i < maxLineCount; i++) {
-			var from = Random.insideUnitCircle * 3;
-			var to =   Random.insideUnitCircle * 3;
-			segments[i] = new Vector4(from.x, from.y, to.x, to.y);
-
-			var c = Random.ColorHSV(0, 1, 1, 1, .5f, 1);
-			var w = .005f + Random.value * .1f;
-			colors[i] = new Vector4(c.r, c.g, c.b, w);
-
-			var va = Random.insideUnitCircle;
-			var vb = Random.insideUnitCircle;
-			velocities[i] = new Vector4(va.x, va.y, vb.x, vb.y);
-			
-			GeometryDraw.DrawBulkLine(gameObject, i, vertexDensity);
+		for (var i = 0; i < MaxLineCount; i++) {
+			GeometryDraw.DrawBulkLine(gameObject, i, VertexDensity);
 		}
 
 		GeometryDraw.Finalize(gameObject);
 
-		material = new Material(material);
-		material.hideFlags = HideFlags.DontSave;
+		material = new Material(material) { hideFlags = HideFlags.DontSave };
 		GetComponent<MeshRenderer>().material = material;
 	}
+	
+	public void SetLine(int index, Vector2 from, Vector2 to, Color color, float width) {
+		segments[index] = new Vector4(from.x, from.y, to.x, to.y);
+		colors[index] = new Vector4(color.r, color.g, color.b, width);
+	}
 
-	void Update() {
-		for (var i = 0; i < maxLineCount; i++) {
-			segments[i].x += velocities[i].x * Time.deltaTime;
-			segments[i].y += velocities[i].y * Time.deltaTime;
-			segments[i].z += velocities[i].z * Time.deltaTime;
-			segments[i].w += velocities[i].w * Time.deltaTime;
+	public void GetLine(int index, out Vector2 from, out Vector2 to, out Color color, out float width) {
+		from = new Vector2(segments[index].x, segments[index].y);
+		to   = new Vector2(segments[index].z, segments[index].w);
+		color = new Color(colors[index].x, colors[index].y, colors[index].z);
+		width = colors[index].w;
+		dirty = true;
+	}
 
-			var from = new Vector2(segments[i].x, segments[i].y);
-			var to = new Vector2(segments[i].z, segments[i].w);
-
-			if (from.magnitude > 3) {
-				from = from.normalized * 3;
-				velocities[i].x *= -1;
-				velocities[i].y *= -1;
-			}
-
-			if (to.magnitude > 3) {
-				to = to.normalized * 3;
-				velocities[i].z *= -1;
-				velocities[i].w *= -1;
-			}
-
-			segments[i].Set(from.x, from.y, to.x, to.y);
-		}
+	void LateUpdate() {
+		if (!dirty) return;
 
 		material.SetVectorArray("_Points", segments);
 		material.SetVectorArray("_Colors", colors);
+		dirty = false;
 	}
 }
