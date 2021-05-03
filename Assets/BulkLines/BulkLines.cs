@@ -9,20 +9,51 @@ public class BulkLines : MonoBehaviour {
 
 	static BulkLines instance;
 
+	/// <summary>
+	/// Draws a line in 2D mode (on the XY plane)
+	/// </summary>
+	/// <param name="origin">Start point</param>
+	/// <param name="end">End point</param>
+	/// <param name="width">Line width</param>
+	/// <param name="color">Line color (alpha is ignored)</param>
+	/// <param name="z">Line depth</param>
 	public static void DrawLine(Vector2 origin, Vector2 end, float width, Color color, float z = 0) {
 		if (instance == null) Initialize();
 		instance._DrawLine(new Vector3(origin.x, origin.y, z), new Vector3(end.x, end.y, z), color, width);
 	}
 
+	/// <summary>
+	/// Draws a line in almost 3D, the line ends will be along the XY plane still.
+	/// </summary>
+	/// <param name="origin">Start point</param>
+	/// <param name="end">End point</param>
+	/// <param name="width">Line width</param>
+	/// <param name="color">Line color (alpha is ignored)</param>
 	public static void DrawLine3D(Vector3 origin, Vector3 end, float width, Color color) {
 		if (instance == null) Initialize();
 		instance._DrawLine(origin, end, color, width);
 	}
 
-	public static void DrawDot(Vector3 position, float radius, Color color, float z) {
-		DrawLine(position, position + Vector3.right * .001f, radius, color, z);
+	/// <summary>
+	/// Draws a dot in 2D space, essentially a very short line. 
+	/// </summary>
+	/// <param name="position">Where to draw</param>
+	/// <param name="radius">Dot size</param>
+	/// <param name="color">Dot color</param>
+	/// <param name="z"></param>
+	public static void DrawDot(Vector2 position, float radius, Color color, float z) {
+		DrawLine(position, position + Vector2.right * .001f, radius, color, z);
 	}
 
+	/// <summary>
+	/// Uses multiple lines to draw a circle
+	/// </summary>
+	/// <param name="position">Where to draw the circle</param>
+	/// <param name="radius">How big to draw the circle</param>
+	/// <param name="color">Circle color</param>
+	/// <param name="lineWidth">Line width</param>
+	/// <param name="numSegments">How many line segments to use</param>
+	/// <param name="z">The depth to draw at</param>
 	public static void DrawCircle(Vector2 position, float radius, Color color, float lineWidth, int numSegments = 28,
 	                              float z = 0) {
 		var last = Vector2.zero;
@@ -36,16 +67,20 @@ public class BulkLines : MonoBehaviour {
 		}
 	}
 
-	// BatchSize NEEDS TO MATCH WHATEVER IS IN THE SHADER
+	// BatchSize NEEDS TO MATCH WHATEVER IS IN THE SHADER (BulkLineShader.shader)
 	// IF YOU CHANGE THIS, YOU MAY NEED TO RESTART UNITY FOR
 	// IT TO TAKE HOLD (YES, IT'S BIZARRE)
-	// this determines how many lines are in the mesh
-	const  int      BatchSize         = 255;
+	
+	// this determines how many lines are in the mesh.
+	// low spec hardware seems to max out at 255 lines, a reasonable pc seems to be able to do 1024
+	// there's no reason to go super high as multiple batches works just fine. i recommend leaving it at 255. 
+	const int BatchSize = 255;
 	
 	// the batch count determines how may times over we can draw that mesh
 	// 255 batch size * 8 BatchCount = 2040 lines / frame
-	const  int      BatchCount        = 8;
-	const  int      MaxIndex          = BatchCount * BatchSize;
+	// you can have any number of batches, but it may be useful to keep it at something
+	// reasonable so you can notice if things go wrong.
+	const int BatchCount = 8;
 	
 	// this determines how many vertices are in the rounded ends
 	const  int      NumSectorVertices = 16;
@@ -63,7 +98,6 @@ public class BulkLines : MonoBehaviour {
 	readonly int          propertyFrom  = Shader.PropertyToID("_From");
 	readonly int          propertyTo    = Shader.PropertyToID("_To");
 	readonly int          propertyColor = Shader.PropertyToID("_Color");
-	readonly int          propertyPass  = Shader.PropertyToID("_Pass");
 	readonly int          propertyCount = Shader.PropertyToID("_Count");
 	MaterialPropertyBlock propertyBlock;
 
@@ -104,15 +138,17 @@ public class BulkLines : MonoBehaviour {
 		index++;
 	}
 
-	void Set(int index, Vector4 from, Vector4 to, Color color) {
-		var batch = index / BatchSize;
-		var batchIndex = index - batch * BatchSize;
+	void Set(int lineIndex, Vector4 from, Vector4 to, Color color) {
+		var batchIndex = lineIndex / BatchSize;
+		var indexInBatch = lineIndex - batchIndex * BatchSize;
 
-		if (index > MaxIndex) return;
+		const int MaxIndex = BatchCount * BatchSize;
+		
+		if (lineIndex > MaxIndex) return;
 
-		vectorFrom[batch][batchIndex]  = from;
-		vectorTo[batch][batchIndex]    = to;
-		vectorColor[batch][batchIndex] = color;
+		vectorFrom[batchIndex][indexInBatch]  = from;
+		vectorTo[batchIndex][indexInBatch]    = to;
+		vectorColor[batchIndex][indexInBatch] = color;
 	}
 
 	void OnEnable() {
@@ -151,7 +187,6 @@ public class BulkLines : MonoBehaviour {
 			propertyBlock.SetVectorArray(propertyFrom, vectorFrom[batch]);
 			propertyBlock.SetVectorArray(propertyTo, vectorTo[batch]);
 			propertyBlock.SetVectorArray(propertyColor, vectorColor[batch]);
-			propertyBlock.SetInt(propertyPass, batch);
 			propertyBlock.SetInt(propertyCount, count);
 			Graphics.DrawMesh(mesh, Matrix4x4.identity, material, layer, cam, 0, propertyBlock);
 		}
