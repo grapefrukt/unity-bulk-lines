@@ -1,17 +1,27 @@
-## Use this code to draw a lot of wide lines with rounded end caps
+![usfxr](github~/header.png?raw=true "usfxr")
 
-Usage:
+# Bulk lines for Unity
+
+Ever need to draw a bunch of nice thick lines in a hurry?
+You've come to the right place!
+
+### Quickstart:
+Clone this repository and open it in your editor. It's all set up and ready to go. 
+
+### Usage:
+ * Grab the [BulkLines folder](https://github.com/grapefrukt/unity-bulk-lines/tree/master/Assets/BulkLines) and drop it in your project.
  * Plonk a BulkLines component on your camera. 
  * Set it to use the BulkLines material. 
-
-* Draw lines "immediate-mode"-style: 
+ * Draw lines "immediate-mode"-style from anywhere in your code: 
 
     ```BulkLines.DrawLine(Random.insideUnitCircle, Random.insideUnitCircle, Random.value, Random.ColorHSV());```
 
-    This is very similar to how Debug.DrawLine() works. 
+If you've used Debug.DrawLine(), this is very similar. There is no persistence, if you want a line to stay across multiple frames, you will need to draw it again. 
     
 You can draw lines in 3D space, but the assumption is that the camera is facing along the Z axis (as per default in Unity 2D).  
 The lines will not turn to face the camera. 
+
+A variation of code has shipped for Android, iOS, Switch and PC in my game [holedown](https://holedown.com/).
 
 ## How does it work?
 
@@ -37,5 +47,5 @@ Each line is represented by 3 float4:
 | rgb | color |
 | a | alpha**  |
 
-_*(current implementation will not allow setting differing start/end widths, but this could be added)_
+_*(current implementation will not allow setting differing start/end widths, but this could be added)_  
 _** (not used in example implementation, but should be passed along)_
